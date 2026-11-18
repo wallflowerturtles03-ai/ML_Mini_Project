@@ -214,5 +214,9 @@ os.environ["F1_BASE"] = r"C:\path\to\ML_Mini_Project"
 ### License
 No license has been specified for this repository. All rights remain reserved unless the owner explicitly adds a license.
 
+### Author
+Yeshashwini K.
+Yug Bhogi
+
 
 
