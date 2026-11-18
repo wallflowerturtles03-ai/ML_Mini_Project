@@ -152,13 +152,67 @@ The notebook creates or saves:
 ```bash
 git clone https://github.com/wallflowerturtles03-ai/ML_Mini_Project.git
 cd ML_Mini_Project
+```
+### 2. Install Dependencies
 
-2. Install Dependencies
 The notebook installs the main packages directly:
 
+```bash
 pip install fastf1 openpyxl pyarrow scipy scikit-learn joblib
-
+```
 For Jupyter:
+```bash
 pip install jupyter
 jupyter notebook
+```
+### Running the Notebook
+
+Open F1_Problem6_final.ipynb and run the cells sequentially.
+
+```bash
+jupyter notebook F1_Problem6_final.ipynb
+```
+The notebook stages are:
+
+Setup and project-folder discovery
+Race, qualifying, and historical data collection
+Feature-table construction
+Historical-driver-rating test
+Regression and points-finish models
+Plackett-Luce ranking models
+Predicted-versus-actual race analysis
+
+### FastF1 Authentication
+Some data collection cells require an F1 account.
+
+Set the credentials as environment variables, or enter them when prompted:
+```bash
+export F1_USERNAME="your-email@example.com"
+export F1_PASSWORD="your-password"
+```
+Windows Powershell:
+
+```Powershell
+$env:F1_USERNAME="your-email@example.com"
+$env:F1_PASSWORD="your-password"
+```
+Credentials are not stored in the notebook. Downloaded cells skip themselves when the corresponding files already exist.
+
+The notebook searches common project locations. The project directory can also be specified manually:
+
+```python
+os.environ["F1_BASE"] = r"C:\path\to\ML_Mini_Project"
+```
+### Limitations
+* The 2026 rule reset reduces the usefulness of older team and car performance.
+* Historical driver ratings rely on qualifying comparisons against team-mates.
+* The number of available races is limited.
+* DNF and unusual-race outcomes can strongly affect the metrics.
+* FastF1 API limits or expired authentication can interrupt data collection.
+* The notebook assumes that real qualifying/grid data is available for post-qualifying predictions.
+
+### License
+No license has been specified for this repository. All rights remain reserved unless the owner explicitly adds a license.
+
+
 
