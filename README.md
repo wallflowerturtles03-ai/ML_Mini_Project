@@ -1,221 +1,235 @@
-# ML_Mini_Project
-# F1 2026 Driver Finishing-Position Prediction
+# Formula 1 2026 Machine-Learning Mini Project
 
-A machine-learning mini-project that predicts a Formula 1 driver's finishing position using qualifying, race, practice, weather, team-form, and historical data.
+A Formula 1 machine-learning project that uses 2026 race data and historical 2022–2025 results to model lap pace, tyre performance, pit stops, qualifying order, race finishing order, and points finishes.
 
-The project uses time-based evaluation: earlier races train the models, while later races are used for validation and testing. This prevents future race information from leaking into predictions.
+The main analysis is in [`Group_E_Notebook.ipynb`](Group_E_Notebook.ipynb). [`Figures_for_f1.ipynb`](Figures_for_f1.ipynb) builds the report figures from the data and model outputs saved by the main notebook. [`libraries.ipynb`](libraries.ipynb) contains a small FastF1 setup example.
 
-## Research Question
+## Research objectives
 
-**Can we predict a driver's finishing position before a race?**
+The project evaluates several Formula 1 prediction problems:
 
-The project provides two prediction stages:
+- **Lap pace:** estimate lap-time performance from race-lap features.
+- **Tyre degradation:** measure whether tyre age predicts increasing lap time.
+- **Pit-stop detection:** predict whether a lap is followed by a pit stop.
+- **Qualifying:** predict the Q1 gap and the eventual qualifying order.
+- **Race finishing position:** rank drivers pre-weekend and after qualifying.
+- **Points finish:** classify whether a driver finishes in the top 10.
+- **Lap-time consistency:** compare tyre stints by compound.
+- **Live-race replay:** replay a race lap by lap through selected models.
 
-- **Pre-weekend:** driver form, team form, championship points, and historical ratings
-- **After qualifying:** pre-weekend features plus grid position and qualifying performance
+## Repository files
 
-## Repository Contents
+| File | Purpose |
+|---|---|
+| [`Group_E_Notebook.ipynb`](Group_E_Notebook.ipynb) | Complete data collection, feature construction, model training, evaluation, forecasting, and replay pipeline |
+| [`Figures_for_f1.ipynb`](Figures_for_f1.ipynb) | Recreates six report figures from saved model outputs |
+| [`libraries.ipynb`](libraries.ipynb) | Minimal package installation and FastF1/plotting imports |
+| `README.md` | Project documentation |
 
-- `F1_Problem6_final.ipynb` — complete data collection and prediction pipeline
-- `libraries.ipynb` — dependency setup and imports
-- `README.md` — project documentation
+## Data and features
 
-## Methodology
+The notebook collects or reads FastF1 data for 20 rounds of the 2026 season, including:
 
-### 1. Data Collection
-
-The notebook uses `FastF1` to collect:
-
-- 2026 race and qualifying results
-- Race laps and weather data
-- Historical qualifying and race results from 2022–2025
+- Race laps and race results
+- Qualifying laps and results
 - Practice and sprint sessions
 - Pit stops and race-control messages
-- Track status and circuit information
-- Pirelli tyre-compound and circuit data
+- Weather and track status
+- Tyre compounds and tyre life
+- Circuit and extra race information
+- Historical qualifying and race results from 2022–2025
 
-Downloaded data is cached locally, and existing files are reused instead of downloaded again.
+The saved workbooks are designed to separate data collection from analysis:
 
-### 2. Feature Engineering
+- `F1_2026_races.xlsx`
+- `F1_2026_qualifying.xlsx`
+- `F1_2026_extra.xlsx`
 
-Each row represents one **driver in one race**.
+Most modelling work reads saved parquet and CSV outputs rather than downloading data again. This lets the analysis run without repeating the full FastF1 collection process.
 
-Available features include:
+## Notebook pipeline
 
-- Grid position
-- Gap to the fastest qualifying lap
-- Sprint-race position
-- Practice best-lap and long-run gaps
-- Team tyre degradation
-- Driver average finish
-- Driver points and DNF rate
-- Team points, average finish, and DNF rate
-- Rain risk and pit-lane duration
-- Historical 2022–2025 driver rating
+The main notebook contains 23 numbered cells grouped into eight sections.
 
-Form features are calculated only from earlier rounds. A race never sees its own result.
+| Stage | Notebook section | What it does |
+|---|---|---|
+| Setup | Section 1 | Sets the project folder, defines a file lookup helper, and fixes the train/validation/test split |
+| Data collection | Section 2 | Downloads 2026 race, qualifying, practice, sprint, pit, weather, and historical data |
+| Modelling tables | Section 3 | Builds lap-level pace and pit-stop tables and applies modelling cutoffs |
+| Historical analysis | Section 4 | Tests 2022–2025 driver-at-circuit affinity, circuit behaviour, and team-mate qualifying ratings |
+| In-race models | Section 5 | Models lap pace, tyre degradation, pit-stop likelihood, and stint consistency |
+| Forecast models | Section 6 | Builds qualifying and race forecasting models in v1 and walk-forward v2 variants |
+| Remaining-race forecast | Section 7 | Forecasts rounds 21–23 before the weekend, after practice, and after qualifying |
+| Live-race replay | Section 8 | Replays a test race lap by lap through selected models |
 
-### 3. Time-Based Splits
+## Evaluation strategy
 
-| Dataset | Rounds |
+All models use a time-based evaluation split:
+
+| Split | Rounds |
 |---|---:|
 | Training | 1–12 |
 | Validation | 13–16 |
 | Test | 17–20 |
 
-The validation set selects the model, while the test set is used for the final score.
+The validation set is used to select a model or threshold. The test set is used once for the final comparison.
+
+Forward forecasting also uses walk-forward evaluation: race *r* is predicted using only races earlier than *r*. For qualifying, the project compares a recent-form baseline, form-only features, and form plus practice data.
 
 ## Models
 
-### Model 6 v1: Regression
+### Lap pace and tyre degradation
 
-Finishing position is predicted using:
-
-- Grid-position baseline
+- Baseline: average or simple tyre-related reference
+- Linear regression
 - Ridge regression
-- HistGradientBoosting regression
+- Gradient boosting
 
-It is evaluated using:
+### Pit-stop prediction
 
-- Mean absolute error
-- Spearman rank correlation
-- R² score
-- Finisher-only MAE
+Because pit stops occur on only a small proportion of laps, PR-AUC is used instead of accuracy alone.
 
-### Model 6 v2: Plackett-Luce Ranking
+Models compared include:
 
-The ranking model learns the likely order of finish rather than minimizing average numeric error.
+- Never-pit baseline
+- Logistic regression
+- Gradient boosting
 
-Monte Carlo simulation with Gumbel noise estimates:
+### Qualifying
 
-- Probability of winning
-- Probability of a podium finish
-- Probability of a points finish
-- Expected finishing position
+The notebook evaluates:
 
-Two versions are tested:
+- A recent-form baseline
+- A form-only qualifying model
+- A model using form and practice/FP3 features
 
-- **Pre-weekend:** form and historical features
-- **After qualifying:** pre-weekend features plus grid position and qualifying data
+### Race outcome
 
-### Model 7: Points-Finish Classification
-
-This model predicts whether a driver finishes in the top 10.
-
-Compared models:
+Race finishing position and race order are modelled with:
 
 - Grid-position baseline
-- Logistic regression
-- HistGradientBoosting classification
+- Ridge or linear regression
+- HistGradientBoosting regression
+- Plackett-Luce ranking
+- Points-finish logistic and gradient-boosting classifiers
 
-Evaluation metrics include accuracy, precision, recall, F1-score, and ROC-AUC.
+The Plackett-Luce implementation uses Monte Carlo simulation to estimate ranking distributions and race outcomes.
 
-## Evaluation
+## Key outputs
 
-Models are tested using walk-forward prediction across races 8–20. For every race, the model is trained using only earlier races.
-
-Reported metrics include:
-
-- Mean absolute error
-- Spearman rank correlation
-- Winner-pick accuracy
-- Podium-hit count
-- Points-finish ROC-AUC
-- Average log probability of the actual winner
-
-A model must beat the simple `finish = grid position` baseline to be considered useful.
-
-## Outputs
-
-The notebook creates or saves:
+The notebook creates or reads the following types of outputs:
 
 | Output | Description |
 |---|---|
-| `F1_2026_races.xlsx` | 2026 race laps and results |
-| `F1_2026_qualifying.xlsx` | 2026 qualifying laps and results |
-| `F1_2026_extra.xlsx` | Practice, sprint, pit, weather, and circuit data |
-| `hist_results.parquet` | 2022–2025 qualifying and race history |
-| `model_race.parquet` | Final driver-per-race feature table |
-| `model6_finish.pkl` | Selected finishing-position model |
-| `model7_points.pkl` | Selected points-finish model |
-| `model6_pl_pre.pkl` | Pre-weekend ranking model |
-| `model6_pl_post.pkl` | Post-qualifying ranking model |
-| `results_model6.csv` | Model 6 v1 comparison |
-| `results_model7.csv` | Model 7 comparison |
-| `results_model6_v2.csv` | Walk-forward ranking comparison |
-| `results_model6_v2_per_race.csv` | Predicted versus actual race results |
+| `F1_2026_races.xlsx` | Race laps and results |
+| `F1_2026_qualifying.xlsx` | Qualifying laps and results |
+| `F1_2026_extra.xlsx` | Practice, sprint, pit-stop, weather, and circuit data |
+| `hist_results.parquet` | Historical 2022–2025 qualifying and race data |
+| `model_pace.parquet` | Lap-level pace modelling table |
+| `model_pit.parquet` | Lap-level pit-stop modelling table |
+| `model_quali.parquet` | Qualifying feature table |
+| `model_race.parquet` | Driver-per-race feature table |
+| `results_model*.csv` | Model comparisons |
+| `saved_models/*` | Fitted model artefacts |
+| `figures/` | Saved report visualisations |
+| `site_export/replay_*` | Live-race replay exports |
+
+## Report figures
+
+[`Figures_for_f1.ipynb`](Figures_for_f1.ipynb) recreates six figures:
+
+1. Race-lap coverage and train/validation/test split
+2. Random-split versus time-split leakage check
+3. Pit-stop detection PR-AUC
+4. Qualifying walk-forward comparison
+5. Race-winner and ranking walk-forward comparison
+6. Lap-time consistency across tyre compounds
+
+Run the main notebook first. The figure notebook reads its saved CSV, parquet, Excel, JSON, and model files and does not refit the models.
 
 ## Setup
 
-### 1. Clone the Repository
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/wallflowerturtles03-ai/ML_Mini_Project.git
 cd ML_Mini_Project
 ```
-### 2. Install Dependencies
 
-The notebook installs the main packages directly:
+### 2. Create a Python environment
+
+Python is used through Jupyter. A modern Python environment with Jupyter and the packages below is sufficient:
 
 ```bash
-pip install fastf1 openpyxl pyarrow scipy scikit-learn joblib
+python -m pip install --upgrade pip
+python -m pip install jupyter fastf1 openpyxl pyarrow pandas numpy matplotlib scipy scikit-learn joblib
 ```
-For Jupyter:
+
+### 3. Start Jupyter
+
 ```bash
-pip install jupyter
 jupyter notebook
 ```
-### Running the Notebook
 
-Open F1_Problem6_final.ipynb and run the cells sequentially.
+Open [`Group_E_Notebook.ipynb`](Group_E_Notebook.ipynb).
 
-```bash
-jupyter notebook F1_Problem6_final.ipynb
+## Running the project
+
+Run the cells in order. The main notebook has a setup cell at the beginning that expects a local project folder.
+
+For analysis and reproduction of the reported results:
+
+1. Run Cell 1.
+2. Skip the data-collection section if the three Excel workbooks are already available.
+3. Continue through the modelling sections in order.
+4. Run [`Figures_for_f1.ipynb`](Figures_for_f1.ipynb) after the model outputs have been created.
+
+The notebook searches for saved files from the project directory and a `Data` subdirectory. It also searches upwards for some figure inputs.
+
+A Windows-style project path is used in the notebook:
+
+```python
+BASE = r"C:\path\to\ML_Mini_Project"
 ```
-The notebook stages are:
 
-Setup and project-folder discovery
-Race, qualifying, and historical data collection
-Feature-table construction
-Historical-driver-rating test
-Regression and points-finish models
-Plackett-Luce ranking models
-Predicted-versus-actual race analysis
+Change `BASE` to the local directory containing this repository and, if applicable, its `Data` folder.
 
-### FastF1 Authentication
-Some data collection cells require an F1 account.
+## FastF1 authentication
 
-Set the credentials as environment variables, or enter them when prompted:
+The data-collection cells require FastF1 authentication for some 2026 sessions. Credentials can be supplied through environment variables:
+
 ```bash
 export F1_USERNAME="your-email@example.com"
 export F1_PASSWORD="your-password"
 ```
-Windows Powershell:
 
-```Powershell
+PowerShell:
+
+```powershell
 $env:F1_USERNAME="your-email@example.com"
 $env:F1_PASSWORD="your-password"
 ```
-Credentials are not stored in the notebook. Downloaded cells skip themselves when the corresponding files already exist.
 
-The notebook searches common project locations. The project directory can also be specified manually:
+You can instead enter the credentials when prompted. Credentials are not written to the notebook.
 
-```python
-os.environ["F1_BASE"] = r"C:\path\to\ML_Mini_Project"
-```
-### Limitations
-* The 2026 rule reset reduces the usefulness of older team and car performance.
-* Historical driver ratings rely on qualifying comparisons against team-mates.
-* The number of available races is limited.
-* DNF and unusual-race outcomes can strongly affect the metrics.
-* FastF1 API limits or expired authentication can interrupt data collection.
-* The notebook assumes that real qualifying/grid data is available for post-qualifying predictions.
+FastF1 may limit requests and caches downloaded sessions locally. Cells that write existing output files skip themselves, making data collection resumable.
 
-### License
-No license has been specified for this repository. All rights remain reserved unless the owner explicitly adds a license.
+## Limitations
 
-### Author
-Yeshashwini K. & Yug Bhogi
+- The 2026 rule reset makes older car and team performance less representative.
+- Historical team-mate comparisons may not fully capture new driver or car combinations.
+- Only a limited number of races are available for walk-forward evaluation.
+- DNFs and unusual race events can strongly affect ranking and points-finish metrics.
+- Pit-stop detection is affected by heavy class imbalance.
+- Post-qualifying forecasts require real qualifying/grid data.
+- Some outputs depend on files generated locally, such as parquet and Excel datasets.
+- The project contains machine-learning baselines rather than a production prediction service.
 
+## Licence
 
+No licence has been specified in this repository. Copyright remains with the repository owner unless an explicit licence is added.
 
+## Authors
+
+- Yeshashwini K.
+- Yug Bhogi
